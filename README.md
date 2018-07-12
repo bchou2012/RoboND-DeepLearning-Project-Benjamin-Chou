@@ -124,8 +124,6 @@ Validation steps is the number of validation sets checked against the training s
 
 This value sets how many host machine processes are allocated to run the network. 
 
-After the 
-
 **Prediction Process**
 
 After the FCN is trained, the predictions are compared to the validation image set. 
