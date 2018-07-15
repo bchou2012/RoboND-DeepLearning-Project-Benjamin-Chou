@@ -1,6 +1,9 @@
 Udacity Deep Learning Project
 =
 
+**V1.1**:
+Added passing results at 160 x 160 resolution. Added section on project viability with other objects (see **Out of Scope Modeling**) . Clarified sections on encoders, decoders, skip layers, and project FCN. 
+
 This project covers the theory and techniques in training a neural network to identify images of a target being followed by a quadrotor. 
 
 ## Segmentation Network Theory
@@ -19,7 +22,11 @@ Training a system to recognize full scale images as is would be computationally 
 
 **Convolutions**
 
-Downsizing images make use of convolution. A convolution matrix takes a pixel and a number of its local neighbors  in an image, dependent on the convolution size, then creates a weighted value, with the resulting output a smaller matrix. 
+*Downsampling*
+
+Downsizing images make use of convolution. A convolution matrix takes a pixel and a number of its local neighbors  in an image, dependent on the convolution size, then creates a weighted value that represents the combined pixel and its neighbors, with the resulting output a smaller matrix. 
+
+In our project, image downsampling creates a smaller image, which is faster to process, while maintaining as many of the relevant details as possible. Downsampling causes information loss no matter what, but the scale is dependent on parameters like convolution filter size and stride. 
 
 <img src="http://deeplearning.net/software/theano/_images/no_padding_no_strides.gif" alt="animated convolution example" width="320px">
 
@@ -36,6 +43,18 @@ The above example also shows no padding, as the convolution matrix passes over e
 *Image Source: https://github.com/vdumoulin/conv_arithmetic/*
 
 The above example shows a 5x5 matrix with a 3x3 convolution run on it with a stride of 2 and zero padding along the edges.
+
+*Upsampling*
+
+<img src = "https://github.com/vdumoulin/conv_arithmetic/blob/master/gif/no_padding_no_strides_transposed.gif?raw=true" alt = "Upsampling Example" width="320px">
+
+*Image Source: https://github.com/vdumoulin/conv_arithmetic*
+
+Upsampling is the opposite of downsampling; a deconvolution matrix is run over an input and predicts a larger output matrix. The above example creates a 4x4 output from a 2x2 input with a 3x3 deconvolution matrix. 
+
+Upsampling a previously downsampled input will not create a perfect representation of the original input. As seen in the above example, positions non-adjacent to the input factor into the resulting output. Those non-adjacent positions may not have any relevance to the position in question at the original scale, creating error.  
+
+One way of mitigating upsampling data loss is to provide an input of the original data at the upsampling resolution to correct it. This is done with skip filters, discussed later. 
 
 **Neurons and Rectifier Linear Unit (ReLU)**
 
@@ -57,9 +76,17 @@ Softmax returns a vector that represents a probability distribution of the input
 
 <img src="https://github.com/bchou2012/RoboND-DeepLearning-Project-Benjamin-Chou/blob/master/writeup_media/Fully%20Convolutional%20Network.jpg?raw=true" alt="Sample FCN Diagram" width="640px">
 
-The input is an image, broken down into three layers which represent the image's R, G, and B value at each pixel. The input undergoes any number of convolutions with smaller and smaller convolution matrix sizes but greater depth. After the last convolution the filters undergo a 1x1 convolution to reduce the number of parameters and decrease processing time. 
+*Encoders*
 
-The classifcations are then built back up into an output prediction image using deconvolutional layers, which builds up larger images from smaller images using bilinear upsampling, which predicts what the missing data values would be in upscaling.  
+At each layer an encoder runs a convolution on the input; for this project the convolution is run multiple times across the entirety of the image. creating a series of **_downsampled_** patches of sections of the input. These patches are run through a number of filters to create a set of neuron activations which are passed on to the next layer. 
+
+*Decoders*
+
+The classifications are then built back up into an output prediction image using deconvolutional layers. The deconvolutional layers build up larger images from smaller images using bilinear **_upsampling_**, which predicts what the missing data values would be in upscaling.  
+
+*Skip Connections*
+
+![Skip Connection Example](https://github.com/bchou2012/RoboND-DeepLearning-Project-Benjamin-Chou/blob/master/writeup_media/Skip%20Connection.jpg?raw=true)
 
 Skip connections are added, which connects convolutional layers to deconvolutional layers. This helps with the possible data loss and artifacts created through bilinear upsampling by providing the data of same filter level before the downsampling/upsampling process.  
  
@@ -74,23 +101,17 @@ Due to time constraints the GitHub provided data set was used to train the netwo
 
 **Network Construction**
 
-The provided `model_training.ipynb` file provided preconstructed functions for separable and regular convolutions, and bilinear upsampling, defined as `separable_conv2d_batchnorm()`, `conv2d_batchnorm()` and `bilinear_upsample()`. The separable convolution runs the input filter through a 1x1 convolution to reduce dimensionality as discussed previously. 
-
-*Encoder Block*
-The encoder block runs an input layer through the `separable_conv2d_batchnorm()`, along with filter size and stride parameters. The input layer undergoes convolution and a hidden layer with ReLU activation, which is then returned. This function is defined as `encoder_block()`
-
-*Decoder Block*
-The decoder block upsizes the input layer with the `bilinear_upsample()`. Logic is added to allow for selection of a skip layer to be concatenated with the upsampled input, then run through the `seperable_conv2d_batchnorm()`. This function is defined as `decoder_block()`
-
 *Fully Convolutional Network*
 
-Constructing the Fully Convolutional Network is as follows:
+The concept for constructing the Fully Convolutional Network is as follows:
 
   * A number of encoder blocks are added, with each depth increasing the number of filters.
   * A 1x1 convolution is run on the last encoder block, this time using `conv2d_batchnorm()`
   * A number of decoder blocks in the same quantity as the encoder blocks are added, with the option of connecting the decoder blocks to encoder blocks with skip layers.
   * The output of the decoder blocks is run through a convolution with Softmax activation to create the prediction image.
   * This network is defined as `fcn_model()`
+
+For more details on the specific construction for this project see *FCN Construction and Parameters* under **Code Implementation and Discussion**.
 
 **Hyperparameters**
 
@@ -141,9 +162,19 @@ After the parameters are compared, error scores are calculated based true positi
 
 Please see `model_training.ipynb` in the `/code/` directory of the repository. Discussion of FCN construction and parameters are discussed below.
 
+The provided `model_training.ipynb` file provided preconstructed functions for separable and regular convolutions, and bilinear upsampling, defined as `separable_conv2d_batchnorm()`, `conv2d_batchnorm()` and `bilinear_upsample()`. The separable convolution runs the input filter through a 1x1 convolution to reduce dimensionality as discussed previously. 
+
+*Encoder Block*
+The encoder block runs an input layer through the `separable_conv2d_batchnorm()`, along with filter size and stride parameters. The input layer undergoes convolution and a hidden layer with ReLU activation, which is then returned. This function is defined as `encoder_block()`
+
+*Decoder Block*
+The decoder block upsizes the input layer with the `bilinear_upsample()`. Logic is added to allow for selection of a skip layer to be concatenated with the upsampled input, then run through the `seperable_conv2d_batchnorm()`. This function is defined as `decoder_block()`
+
 **FCN Construction and Parameters**
 
 For the final submission, the FCN had the following construction:
+
+<img src="https://github.com/bchou2012/RoboND-DeepLearning-Project-Benjamin-Chou/blob/master/writeup_media/Project%20Fully%20Convolutional%20Network.jpg?raw=true" alt="Project FCN" width="640px">
 
 *Bilinear Upsampling and Strides*
 
@@ -165,38 +196,45 @@ Based on the size of the encoder filters, the 1x1 convolution was run with `256`
 
 *Decoder Blocks*
 
-The decoder block used a single separable convolution layer. While multiple separable convolutions were an option, they did not appear to increase or decrease performance and results in a meaningful way. 
+The decoder block used three seperable convolutions after upsampling, as this proved to be the parameter that resulted in the final passing result. As there were three encoder blocks, there needed to be three decoder blocks. The decoder blocks took the same filter sizes as the encoder blocks. 
 
-As there were three encoder blocks, there needed to be three decoder blocks. The decoder blocks took the same filter sizes as the encoder blocks. For the skip layers, they were used on the two outermost decoder layers, as at the first decoder layer it was theorized there was not enough data loss from the downsizing to serve an appreciable effect. 
+*Skip Connections*
+
+For the skip connections, three were used to connect all three encoder blocks to their respective decoder blocks. 
 
 **Parameters and Network Testing**
-
-*Input Resolution*
-
-Runs with using the full image size of `256` H x W provided the final passing results. Downsizing to `160` H x W as suggested by the project code means scaling the base image down by almost 40%. Combined with the low batch size limitation this appears to have resulted in an underperforming network. 
-
-Scaling down the image size allows for smaller inputs and faster processing. For the context of this project the scaling down to 160 H x W proved to enough detail loss to consistently miss the 40% passing rate, in conjunction with other implementation limitations. The best results with 160 H x W used epoch sizes in the low hundreds and a learning rate in the one-hundred-thousanth range, but maxing out at ~39%. 
-
-While image input downsizing before use in a FCN has benefits, in the context of this project the downsizing ended up proving to be a constraint which pushed performance and results down. 
 
 *Batch size vs Filter Depth*
 
 The notebook used Tensorflow-gpu instead of tensorflow to capitalize on the local host's graphics acceleration. However, larger tensor sizes could only be used with small batch sizes due to hitting the memory cap of the GPU. Networks with deeper layers and higher filters could only be run in batches of 10-12. With a data set size of 4131, this resulted in parameter corrections based on tenths of a percent of the total data set.
 
-For final project submission 3 layers were run with a max filter size of 256 and at batch size 16, driving the `steps_per_epoch` to 260.  
-
 Post-project tinkering indicated one could reach batch sizes of up to 40, still less than 1% of the data size per, but at the cost of using smaller filter sizes. 
 
 *Learning Rates, Epochs, and Validation Steps*
 
-Learning rates were experimented on from a range of `0.01` to `0.00001`, with the final submission using `0.0005`. Low learning rates required large epoch runs for the network to stabilize, which increased run time into the hours. Higher learning rates required less epoch runs, but also ran into the issue of instability as the learning value oscillated around the plateau. 
+Learning rates were experimented on from a range of `0.01` to `0.00001`. Low learning rates required large epoch runs for the network to stabilize, which increased run time into the hours. Higher learning rates required less epoch runs, but also ran into the issue of instability as the learning value oscillated around the plateau. 
+
+*Final Project Parameters*
+
+    bilinear upsampling: 2x2
+	encoder/decoder blocks: 3
+	decoder seperable convolutions: 3
+	encoder/decoder filters: 32,64,128
+	1x1 convolution layer filter: 256
+	skip layers: 3
+
+	learning rate: 0.001
+	batch size: 100
+	steps per epoch: 42
+	number of epochs: 50
+	validation steps: 13
+
 
 ## Results
 
 *Project error loss curve*
 
 <img src="https://github.com/bchou2012/RoboND-DeepLearning-Project-Benjamin-Chou/blob/master/writeup_media/project_training_curve.png?raw=true" alt="Project error curve" width="320px">
-
 
 *Sample project prediction for detecting the hero*
 
@@ -213,6 +251,14 @@ Learning rates were experimented on from a range of `0.01` to `0.00001`, with th
 *IoU Results*
 
 <img src="https://github.com/bchou2012/RoboND-DeepLearning-Project-Benjamin-Chou/blob/master/writeup_media/deep_learning_results.png?raw=true" alt="IoU calculations" width="720px">
+
+As shown above we achieved above the passing grade of 40%
+
+*Out of Scope Modeling*
+
+The FCN structure of this project could work on other objects (cats, cars) of similar form if the features are of the same level of detail (limbs, non-pattern surfaces, 160 x 160 px images). Objects of greater complexity (tree outlines with multiple branches and leaves) would require greater depth of encoder/decoder blocks and larger filters, among other changes. 
+
+The prediction training data would not, as it is meant to recognize specific human features (round head, blocky torso, long arms/legs), not other animals or cars or other objects.
 
 ## Future Considerations
 
