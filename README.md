@@ -1,6 +1,9 @@
 Udacity Deep Learning Project
 =
 
+**V1.2**:
+Updated description of encoders/decoders under *Fully Convolutional Neural Network Components*.
+
 **V1.1**:
 Added passing results at 160 x 160 resolution. Added section on project viability with other objects (see **Out of Scope Modeling**) . Clarified sections on encoders, decoders, skip layers, and project FCN. 
 
@@ -72,17 +75,21 @@ Softmax returns a vector that represents a probability distribution of the input
 
 *Image source: https://towardsdatascience.com/deep-learning-concepts-part-1-ea0b14b234c8* 
 
-**Fully Convolutional Neural Network**
+**Fully Convolutional Neural Network Components**
 
 <img src="https://github.com/bchou2012/RoboND-DeepLearning-Project-Benjamin-Chou/blob/master/writeup_media/Fully%20Convolutional%20Network.jpg?raw=true" alt="Sample FCN Diagram" width="640px">
 
 *Encoders*
 
-At each layer an encoder runs a convolution on the input; for this project the convolution is run multiple times across the entirety of the image. creating a series of **_downsampled_** patches of sections of the input. These patches are run through a number of filters to create a set of neuron activations which are passed on to the next layer. 
+The encoder in this project compresses data(the input image) through the use of convolutions as detailed above, in the convolution section. Information is lost in the encoder process due to the downsampling, especially over multiple encoder iterations as a patch of image can eventually be degraded to a single pixel or even absorbed into another pixel. For the purposes of the project it would be ideal to retain the image patches containing the hero and bystanders to allow for differentiation between the two.  
+
+At each layer an encoder runs a convolution on the input; for this project the convolution is run multiple times across the entirety of the image. creating a series of downsampled patches of sections of the input. These patches are run through a number of filters to create a set of neuron activations which are passed on to the next layer. 
 
 *Decoders*
 
-The classifications are then built back up into an output prediction image using deconvolutional layers. The deconvolutional layers build up larger images from smaller images using bilinear **_upsampling_**, which predicts what the missing data values would be in upscaling.  
+The decoder in the project reconstructs the original input from the compressed encoder data using deconvolutions as detailed in the deconvolution section. The decoder creates an imperfect reconstruction as local outliers in a patch of  the original input (i.e. solitary blue pixels surrounded by majority red pixels) would have been lost during encoding and not be recoverable during decoding without additional information (see skip connections).
+
+The classifications are then built back up into an output prediction image using deconvolutional layers. The deconvolutional layers build up larger images from smaller images using bilinear upsampling,  which predicts what the missing data values would be in upscaling.  
 
 *Skip Connections*
 
